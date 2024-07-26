@@ -3,3 +3,4 @@ vectorbt
 pandas_ta
 plotly
 pandas
+yfinance
