@@ -2,6 +2,9 @@ import streamlit as st
 import vectorbt as vbt
 import pandas_ta as ta
 import plotly.graph_objects as go
+import streamlit.components.v1 as components
+
+st.set_page_config(layout="wide")
 
 def load_data(asset, start_date, end_date, timeframe):
     data = vbt.YFData.download(asset, start=start_date, end=end_date, interval=timeframe)
@@ -16,7 +19,15 @@ indicator_functions = {
     'ATR': lambda df, length: ta.atr(df['high'], df['low'], df['close'], length=length)
 }
 
-st.title('Backtest Your Trading Strategy')
+st.markdown(
+    """
+    <h1 style='text-align: center; color: #7FC7D9;'>
+        Backtest Your Trading Strategy
+    </h1>
+    """,
+    unsafe_allow_html=True
+)
+
 st.sidebar.header('Input Parameters')
 
 asset = st.sidebar.text_input('Asset', value='AAPL')
@@ -29,8 +40,8 @@ dff = data.get()
 dff.columns = dff.columns.str.lower()
 df = data.get('close')
 
-st.subheader(asset + ' Data Preview')
-st.write(dff[['open', 'high', 'low', 'close', 'volume']].tail(10))
+st.subheader(f'{asset} Data Preview')
+st.dataframe(dff[['open', 'high', 'low', 'close', 'volume']].tail(10), use_container_width=True)
 
 # Create the initial candlestick chart
 fig = go.Figure()
@@ -244,17 +255,94 @@ if st.session_state.get('show_conditions_window', False):
             freq='1d'
         )
 
-        st.write("Portfolio Stats:")
-        st.write(portfolio.stats())
+        #st.write("Portfolio Stats:")
+        #st.write(portfolio.stats())
+
+        
+         
+        
+        # Convert the stats to a dictionary first
+        stats = portfolio.stats().to_dict()
+        
+        # Display Portfolio Stats as custom cards
+        st.subheader("Portfolio Stats")
+        
+        # Define CSS for a fixed grid layout with 7 cards per row
+        card_css = """
+        <style>
+        .stat-card-grid {
+            display: grid;
+            grid-template-columns: repeat(7, 1fr); /* 7 cards per row */
+            gap: 15px; /* Space between cards */
+            margin-top: 20px;
+        }
+        
+        .stat-card {
+            background-color: #365486;
+            padding: 15px;
+            border-radius: 10px;
+            border: 2px solid #7FC7D9;
+            text-align: center;
+            color: white;
+            height: 130px; /* Fixed height for all cards */
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+        }
+        
+        .stat-card-title {
+            font-size: 20px;
+            font-weight: bold;
+            color: #FAFAFA;
+        }
+        
+        .stat-card-value {
+            font-size: 22px;
+            font-weight: bold;
+            margin-top: 5px;
+            color: #7FC7D9;
+        }
+        </style>
+        """
+        
+        # Start rendering the stats grid with the CSS
+        html = f"""
+        {card_css}
+        <div class="stat-card-grid">
+        """
+        
+        # Loop through stats and create custom cards
+        for key, value in stats.items():
+            # Convert non-supported types to strings
+            if not isinstance(value, (int, float, str)):
+                value = str(value)
+            
+            # Add each card to the HTML string
+            html += f"""
+            <div class="stat-card">
+                <div class="stat-card-title">{key}</div>
+                <div class="stat-card-value">{value}</div>
+            </div>
+            """
+        
+        # Close the grid div
+        html += '</div>'
+        
+        # Render the HTML using Streamlit's components.html
+        components.html(html, height=600, scrolling=True)
+
+
+
+
 
         st.write("Portfolio Value Chart:")
         st.plotly_chart(portfolio.plot(), use_container_width=True)
 
         st.write("Trades Records:")
-        st.write(portfolio.trades.records_readable)
+        st.dataframe(portfolio.trades.records_readable, use_container_width=True)
 
         st.write("Drawdowns Chart:")
         st.plotly_chart(portfolio.drawdowns.plot(), use_container_width=True)
         
         st.write("Drawdowns Records:")
-        st.write(portfolio.drawdowns.records_readable)
+        st.dataframe(portfolio.drawdowns.records_readable, use_container_width=True)
